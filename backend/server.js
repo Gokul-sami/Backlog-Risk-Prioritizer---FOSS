@@ -6,10 +6,13 @@ import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import githubRoutes from "./routes/githubRoutes.js";
 import Docker from "dockerode";
-const docker = new Docker();
+import { exec } from 'child_process';
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 const app = express();
+const docker = new Docker();
 
 // Middleware
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
@@ -27,7 +30,7 @@ passport.use(new GitHubStrategy(
       callbackURL: "http://localhost:5000/auth/github/callback",
     },
     (accessToken, refreshToken, profile, done) => {
-      profile.accessToken = accessToken;  // Store the access token
+      profile.accessToken = accessToken;
       return done(null, profile);
     }
 ));
@@ -36,7 +39,7 @@ passport.serializeUser((user, done) => {
     done(null, { id: user.id, username: user.username, accessToken: user.accessToken });
 });
   
-  passport.deserializeUser((obj, done) => {
+passport.deserializeUser((obj, done) => {
     done(null, obj);
 });
   
@@ -56,45 +59,45 @@ app.get("/auth/logout", (req, res) => {
   req.logout(() => res.send("Logged out"));
 });
 
-const RAILWAY_PROJECT_ID = process.env.RAILWAY_PROJECT_ID;
-const RAILWAY_API_KEY = process.env.RAILWAY_API_KEY;
-
-app.post("/docker/run", async (req, res) => {
+// API to clone and install dependencies
+app.post("/docker/run", (req, res) => {
     const { repoUrl } = req.body;
     if (!repoUrl) {
         return res.status(400).json({ error: "Repo URL is required" });
     }
 
     const repoName = repoUrl.split("/").pop().replace(".git", "");
+    const repoPath = path.join(process.cwd(), repoName);
 
-    // Clone the repository inside Railway's container
-    const cloneCommand = `git clone ${repoUrl} /app/${repoName}`;
-    exec(cloneCommand, (error, stdout, stderr) => {
+    // Delete the folder if it already exists
+    if (fs.existsSync(repoPath)) {
+        fs.rmSync(repoPath, { recursive: true, force: true });
+    }
+
+    console.log("Cloning repository...");
+    exec(`git clone ${repoUrl} ${repoPath}`, (error, stdout, stderr) => {
         if (error) {
+            console.error("❌ Git Clone Error:", stderr);
             return res.status(500).json({ error: `Git clone failed: ${stderr}` });
         }
 
-        // Run the project inside Railway's container
-        const runCommand = `cd /app/${repoName} && npm install && npm start`;
-        exec(runCommand, (error, stdout, stderr) => {
+        console.log("✅ Git Clone Success:", stdout);
+        console.log("Installing dependencies...");
+        exec(`cd ${repoPath} && npm install`, (error, stdout, stderr) => {
             if (error) {
-                return res.status(500).json({ error: `Execution failed: ${stderr}` });
+                console.error("❌ NPM Install Error:", stderr);
+                return res.status(500).json({ error: `NPM install failed: ${stderr}` });
             }
-            res.json({ message: "Project is running!", logs: stdout });
+
+            console.log("✅ NPM Install Success:", stdout);
+            res.json({
+                message: "Repo cloned and dependencies installed!",
+                repoPath: repoPath,
+                logs: stdout
+            });
         });
     });
 });
 
-app.get("/docker/logs/:id", (req, res) => {
-    const container = docker.getContainer(req.params.id);
-    container.logs({ follow: false, stdout: true, stderr: true }, (err, stream) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        let logData = "";
-        stream.on("data", chunk => logData += chunk.toString());
-        stream.on("end", () => res.send(logData));
-    });
-});
-
 // Start Server
-app.listen(5000, () => console.log("Server running on http://localhost:5000"));
+app.listen(5000, () => console.log("🚀 Server running on http://localhost:5000"));
