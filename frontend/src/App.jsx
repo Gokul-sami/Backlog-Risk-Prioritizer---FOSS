@@ -1,6 +1,5 @@
 import { useState } from "react";
 import GitHubAuth from "./components/GitHubAuth";
-import UploadProject from "./components/UploadProject";
 import RepoSelector from "./components/RepoSelector";
 import LogViewer from "./components/LogViewer";
 
@@ -14,7 +13,6 @@ const App = () => {
       <h1>Project Debugging Platform</h1>
 
       {!user && <GitHubAuth onAuthSuccess={setUser} />}
-      {user && !project && <UploadProject onUploadSuccess={setProject} />}
       {user && !repo && <RepoSelector onRepoSelected={setRepo} />}
       {project && <LogViewer projectId={project.id} />}
     </div>
