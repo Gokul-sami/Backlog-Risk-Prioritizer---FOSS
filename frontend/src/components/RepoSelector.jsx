@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import axios from "axios";
 
 const RepoSelector = ({ onRepoSelected }) => {
@@ -25,6 +26,9 @@ const RepoSelector = ({ onRepoSelected }) => {
       )}
     </div>
   );
+};
+RepoSelector.propTypes = {
+  onRepoSelected: PropTypes.func.isRequired,
 };
 
 export default RepoSelector;

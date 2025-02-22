@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import PropTypes from 'prop-types';
 
 const LogViewer = ({ projectId }) => {
   const [logs, setLogs] = useState([]);
@@ -24,6 +25,9 @@ const LogViewer = ({ projectId }) => {
       </ul>
     </div>
   );
+};
+LogViewer.propTypes = {
+  projectId: PropTypes.string.isRequired,
 };
 
 export default LogViewer;

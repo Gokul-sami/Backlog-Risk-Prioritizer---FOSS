@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PropTypes from "prop-types";
 import axios from "axios";
 import { useDropzone } from "react-dropzone";
 
@@ -35,6 +36,9 @@ const UploadProject = ({ onUploadSuccess }) => {
       {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
+};
+UploadProject.propTypes = {
+  onUploadSuccess: PropTypes.func.isRequired,
 };
 
 export default UploadProject;
