@@ -12,13 +12,27 @@ const RepoSelector = ({ onRepoSelected }) => {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleSelect = async (repo) => {
+    onRepoSelected(repo); // Update frontend state
+
+    try {
+      const response = await axios.post("http://localhost:5000/docker/run", {
+        repoUrl: repo.clone_url
+      });
+
+      console.log("Docker Response:", response.data);
+    } catch (error) {
+      console.error("Error sending repo to Docker:", error);
+    }
+  };
+
   return (
     <div>
       <h3>Select a GitHub Repository:</h3>
       {loading ? <p>Loading...</p> : (
         <ul>
           {repos.map(repo => (
-            <li key={repo.id} onClick={() => onRepoSelected(repo)}>
+            <li key={repo.id} onClick={() => handleSelect(repo)}>
               {repo.name}
             </li>
           ))}
@@ -27,6 +41,7 @@ const RepoSelector = ({ onRepoSelected }) => {
     </div>
   );
 };
+
 RepoSelector.propTypes = {
   onRepoSelected: PropTypes.func.isRequired,
 };

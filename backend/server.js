@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import githubRoutes from "./routes/githubRoutes.js";
+import Docker from "dockerode";
+const docker = new Docker();
 
 dotenv.config();
 const app = express();
@@ -52,6 +54,46 @@ app.get("/auth/user", (req, res) => {
 
 app.get("/auth/logout", (req, res) => {
   req.logout(() => res.send("Logged out"));
+});
+
+const RAILWAY_PROJECT_ID = process.env.RAILWAY_PROJECT_ID;
+const RAILWAY_API_KEY = process.env.RAILWAY_API_KEY;
+
+app.post("/docker/run", async (req, res) => {
+    const { repoUrl } = req.body;
+    if (!repoUrl) {
+        return res.status(400).json({ error: "Repo URL is required" });
+    }
+
+    const repoName = repoUrl.split("/").pop().replace(".git", "");
+
+    // Clone the repository inside Railway's container
+    const cloneCommand = `git clone ${repoUrl} /app/${repoName}`;
+    exec(cloneCommand, (error, stdout, stderr) => {
+        if (error) {
+            return res.status(500).json({ error: `Git clone failed: ${stderr}` });
+        }
+
+        // Run the project inside Railway's container
+        const runCommand = `cd /app/${repoName} && npm install && npm start`;
+        exec(runCommand, (error, stdout, stderr) => {
+            if (error) {
+                return res.status(500).json({ error: `Execution failed: ${stderr}` });
+            }
+            res.json({ message: "Project is running!", logs: stdout });
+        });
+    });
+});
+
+app.get("/docker/logs/:id", (req, res) => {
+    const container = docker.getContainer(req.params.id);
+    container.logs({ follow: false, stdout: true, stderr: true }, (err, stream) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        let logData = "";
+        stream.on("data", chunk => logData += chunk.toString());
+        stream.on("end", () => res.send(logData));
+    });
 });
 
 // Start Server

@@ -1,33 +1,30 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 
-const LogViewer = ({ projectId }) => {
-  const [logs, setLogs] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
+const LogViewer = ({ containerId }) => {
+  const [logs, setLogs] = useState("");
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/logs/${projectId}`)
-      .then(res => {
-        setLogs(res.data.logs);
-        setSuggestions(res.data.suggestions);
-      });
-  }, [projectId]);
+    const fetchLogs = async () => {
+      const res = await axios.get(`http://localhost:5000/docker/logs/${containerId}`);
+      setLogs(res.data);
+    };
+
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 5000); // Refresh logs every 5s
+    return () => clearInterval(interval);
+  }, [containerId]);
 
   return (
     <div>
-      <h3>Execution Logs</h3>
-      <pre style={{ background: "#222", color: "#fff", padding: 10 }}>{logs.join("\n")}</pre>
-
-      <h3>AI Suggested Fixes</h3>
-      <ul>
-        {suggestions.map((fix, idx) => <li key={idx}>{fix}</li>)}
-      </ul>
+      <h3>Container Logs:</h3>
+      <pre>{logs}</pre>
     </div>
   );
 };
 LogViewer.propTypes = {
-  projectId: PropTypes.string.isRequired,
+  containerId: PropTypes.string.isRequired,
 };
 
 export default LogViewer;
