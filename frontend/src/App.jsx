@@ -10,7 +10,7 @@ const App = () => {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Project Debugging Platform</h1>
+      <h1>RiskLens</h1>
 
       {!user && <GitHubAuth onAuthSuccess={setUser} />}
       {user && !repo && <RepoSelector onRepoSelected={setRepo} />}
