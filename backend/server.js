@@ -10,6 +10,7 @@ import { exec } from "child_process";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
+import OpenAI from "openai";
 
 dotenv.config();
 const app = express();
@@ -79,6 +80,34 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ Unhandled Rejection:", reason);
 });
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function getErrorSolution(errorMessage) {
+  try {
+    // Format the error message for Stack Overflow search
+    const query = encodeURIComponent(errorMessage.trim());
+    
+    // Stack Overflow API URL
+    const apiUrl = `https://api.stackexchange.com/2.3/search?order=desc&sort=relevance&intitle=${query}&site=stackoverflow`;
+
+    // Fetch data
+    const response = await axios.get(apiUrl);
+    const items = response.data.items;
+
+    // If solutions are found, return the top answer link
+    if (items.length > 0) {
+      return `🛠️ Suggested Fix: Check this solution: ${items[0].title} - ${items[0].link}`;
+    } else {
+      return "❌ No relevant solution found on Stack Overflow.";
+    }
+  } catch (error) {
+    console.error("⚠️ Stack Overflow API Error:", error.message);
+    return "Failed to get solution from Stack Overflow.";
+  }
+}
+
 // API to clone and install dependencies
 app.post("/docker/run", (req, res) => {
   const { repoUrl, startCommand, envVariables } = req.body;
@@ -101,7 +130,7 @@ app.post("/docker/run", (req, res) => {
     }
 
     console.log("✅ Git Clone Success:", stdout);
-    
+
     console.log("Installing dependencies...");
     exec(`cd ${repoPath} && npm install`, (error, stdout, stderr) => {
       if (error) {
@@ -110,37 +139,28 @@ app.post("/docker/run", (req, res) => {
       }
 
       console.log("✅ NPM Install Success:", stdout);
-      
+
       console.log("Starting the application with user-defined variables...");
       const envCommand = envVariables.split("\n").map(line => `set ${line}`).join(" && ");
       const runCommand = `cd ${repoPath} && ${envCommand} && ${startCommand}`;
 
       const startProcess = exec(runCommand);
 
-      // call api no error
+      // Handling process output and errors
       startProcess.stdout.on("data", async (data) => {
-        try {
-          const response = await axios.post("http://localhost:8000/solve_error", {
-            error: stderr
-          });
-          console.log("🛠️ Suggested Solution:", response.data.solution);
-        } catch (apiError) {
-          console.error("❌ Failed to get solution from Flask API:", apiError.message);
-        }
         console.log(`🟢 APP: ${data}`);
       });
-      // call api error
+
       startProcess.stderr.on("data", async (data) => {
-        try {
-          const response = await axios.post("http://localhost:8000/solve_error", {
-            error: stderr
-          });
-          console.log("🛠️ Suggested Solution:", response.data.solution);
-        } catch (apiError) {
-          console.error("❌ Failed to get solution from Flask API:", apiError.message);
-        }
         console.error(`🔴 APP ERROR: ${data}`);
-      });
+      
+      try {
+          const solution = await getErrorSolution(data);
+          console.log("🛠️ Suggested Fix:", solution);
+        } catch (err) {
+          console.error("⚠️ Failed to fetch solution:", err.message);
+        }
+      });      
 
       res.json({
         message: "App started successfully!",
