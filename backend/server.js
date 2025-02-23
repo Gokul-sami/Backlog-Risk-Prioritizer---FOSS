@@ -80,31 +80,26 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ Unhandled Rejection:", reason);
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Store in .env file
 
 async function getErrorSolution(errorMessage) {
   try {
-    // Format the error message for Stack Overflow search
-    const query = encodeURIComponent(errorMessage.trim());
-    
-    // Stack Overflow API URL
-    const apiUrl = `https://api.stackexchange.com/2.3/search?order=desc&sort=relevance&intitle=${query}&site=stackoverflow`;
+    const response = await axios.post(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+      {
+        contents: [{ parts: [{ text: `Analyze this error and provide a fix:\n\n${errorMessage}` }] }],
+      },
+      {
+        params: { key: GEMINI_API_KEY },
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
-    // Fetch data
-    const response = await axios.get(apiUrl);
-    const items = response.data.items;
-
-    // If solutions are found, return the top answer link
-    if (items.length > 0) {
-      return `🛠️ Suggested Fix: Check this solution: ${items[0].title} - ${items[0].link}`;
-    } else {
-      return "❌ No relevant solution found on Stack Overflow.";
-    }
+    const reply = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "No solution found.";
+    return `🛠 Suggested Fix: ${reply}`;
   } catch (error) {
-    console.error("⚠️ Stack Overflow API Error:", error.message);
-    return "Failed to get solution from Stack Overflow.";
+    console.error("⚠ Gemini API Error:", error.message);
+    return "Failed to get solution from Gemini.";
   }
 }
 
@@ -156,9 +151,9 @@ app.post("/docker/run", (req, res) => {
       
       try {
           const solution = await getErrorSolution(data);
-          console.log("🛠️ Suggested Fix:", solution);
+          console.log("🛠 Suggested Fix:", solution);
         } catch (err) {
-          console.error("⚠️ Failed to fetch solution:", err.message);
+          console.error("⚠ Failed to fetch solution:", err.message);
         }
       });      
 
