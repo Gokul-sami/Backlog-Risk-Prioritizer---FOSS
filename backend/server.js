@@ -9,6 +9,7 @@ import Docker from "dockerode";
 import { exec } from "child_process";
 import fs from "fs";
 import path from "path";
+import axios from "axios";
 
 dotenv.config();
 const app = express();
@@ -116,8 +117,30 @@ app.post("/docker/run", (req, res) => {
 
       const startProcess = exec(runCommand);
 
-      startProcess.stdout.on("data", (data) => console.log(`🟢 APP: ${data}`));
-      startProcess.stderr.on("data", (data) => console.error(`🔴 APP ERROR: ${data}`));
+      // call api no error
+      startProcess.stdout.on("data", async (data) => {
+        try {
+          const response = await axios.post("http://localhost:8000/solve_error", {
+            error: stderr
+          });
+          console.log("🛠️ Suggested Solution:", response.data.solution);
+        } catch (apiError) {
+          console.error("❌ Failed to get solution from Flask API:", apiError.message);
+        }
+        console.log(`🟢 APP: ${data}`);
+      });
+      // call api error
+      startProcess.stderr.on("data", async (data) => {
+        try {
+          const response = await axios.post("http://localhost:8000/solve_error", {
+            error: stderr
+          });
+          console.log("🛠️ Suggested Solution:", response.data.solution);
+        } catch (apiError) {
+          console.error("❌ Failed to get solution from Flask API:", apiError.message);
+        }
+        console.error(`🔴 APP ERROR: ${data}`);
+      });
 
       res.json({
         message: "App started successfully!",
