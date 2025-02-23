@@ -1,6 +1,6 @@
 # RiskLens: Smart Backlog Prioritization
 
-RiskLens is a web application designed to efficiently assess and prioritize backlog risks for streamlined project management. It leverages OpenAI's API to analyze and generate solutions for identified backlogs during project execution, helping teams mitigate risks and optimize workflow efficiency.
+RiskLens is a web application designed to efficiently assess and prioritize backlog risks for streamlined project management. It leverages Gemini's API to analyze and generate solutions for identified backlogs during project execution, helping teams mitigate risks and optimize workflow efficiency.
 
 ## Getting Started
 
@@ -70,7 +70,7 @@ The backend is built using **Node.js and Express** with authentication and repos
    GITHUB_CLIENT_SECRET=your_github_client_secret
    SESSION_SECRET=your_secret_key
    FRONTEND_URL=http://localhost:5173
-   OPENAI_API_KEY=your_openai_api_key
+   GEMINI_API_KEY=your_gemini_api_key
    ```
 4. Start the backend server:
    ```sh
