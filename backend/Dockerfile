@@ -1,8 +1,8 @@
 FROM node:18
 WORKDIR /app
-COPY server/package*.json ./
+COPY backend/package*.json ./
 RUN npm install
-COPY server .
+COPY backend .
 COPY . .
 # CMD ["node", "server.js"]
 EXPOSE 5000
